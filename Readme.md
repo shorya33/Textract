@@ -1,0 +1,1 @@
+A lambda function to extract text from image using textract aws service

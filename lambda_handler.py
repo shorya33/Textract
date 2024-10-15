@@ -1,8 +1,7 @@
 import boto3
 from collections import defaultdict
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from io import BytesIO
-
 
 def get_kv_map(image):
     """
@@ -21,7 +20,6 @@ def get_kv_map(image):
 
     # Get the text blocks
     blocks = response['Blocks']
-    print(f'BLOCKS: {blocks}')
 
     # Initialize key, value, and block maps
     key_map = {}
@@ -78,38 +76,39 @@ def get_text(result, blocks_map):
                             text += 'X'
     return text.strip()
 
-def create_excel_from_kvs(kvs):
+def write_kvs_to_excel(kvs, ws):
     """
-    Create an Excel file from key-value pairs and return it as a BytesIO object.
+    Write key-value pairs into the existing worksheet.
     """
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Key-Value Pairs"
-    
-    # Add headers
-    ws.append(["Key", "Value"])
-
     for key, values in kvs.items():
         for value in values:
             ws.append([key, value])
-    
+
+def process_images(images):
+    """
+    Process multiple images and create a single Excel file.
+    """
+    # Create a new workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Key-Value Pairs"
+
+    # Add headers
+    ws.append(["Key", "Value"])
+
+    # Process each image
+    for image in images:
+        key_map, value_map, block_map = get_kv_map(image)
+        kvs = get_kv_relationship(key_map, value_map, block_map)
+        write_kvs_to_excel(kvs, ws)
+
     # Save the workbook to a BytesIO object
     output = BytesIO()
     wb.save(output)
-    
-    # Seek to the beginning of the stream
     output.seek(0)
-    
+
     return output
 
-def main(image):
-    key_map, value_map, block_map = get_kv_map(image)
-    kvs = get_kv_relationship(key_map, value_map, block_map)
-    outupt_file = create_excel_from_kvs(kvs)
-
-    return outupt_file
-
-# if __name__ == "__main__":
-#     image = './filled_form.png'
-#     excel_output_path = 'output.xlsx'
-#     main(image, excel_output_path)
+def main(images):
+    output_file = process_images(images)
+    return output_file
